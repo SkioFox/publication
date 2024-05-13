@@ -14,6 +14,14 @@ import (
 type BookStoreServer struct {
 	s   store.Store
 	srv *http.Server
+	// 之前的疑问：这个的srv应该首字母大写,不然main.go里的srv.Shutdown 也调用不到
+	// 已经将Shutdown定义为BookStoreServer的方法了：
+	//
+	//func (bs *BookStoreServer) Shutdown(ctx context.Context) error {
+	//    return bs.srv.Shutdown(ctx)
+	//}
+	//
+	//不需要导出BookStoreServer内部的字段。
 }
 
 func NewBookStoreServer(addr string, s store.Store) *BookStoreServer {
