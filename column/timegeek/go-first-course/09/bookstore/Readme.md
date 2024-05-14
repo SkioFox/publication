@@ -10,10 +10,12 @@ Go标准库没有内置配置读写框架，目前go社区应用较多的第三�
 // 新增某个书籍
 curl -X POST -H "Content-Type:application/json" -d '{"id": "978-7-111-55842-2", "name": "The Go Programming Language", "authors":["Alan A.A.Donovan", "Brian W. Kergnighan"],"press": "Pearson Education"}' localhost:8080/book/create
 // 更新某个书籍
-curl -X POST -H "Content-Type:application/json" -d '{"id": "978-7-111-55842-2", "name": "The Go Programming Language update", "authors":["Alan A.A.Donovan", "Brian W. Kergnighan"],"press": "Pearson Education update"}' localhost:8080/book/978-7-111-55842-2// 删除某个书籍
- curl -X DELETE -H "Content-Type:application/json"  localhost:8080/book/978-7-111-55842-2
+curl -X POST -H "Content-Type:application/json" -d '{"id": "978-7-111-55842-2", "name": "The Go Programming Language update", "authors":["Alan A.A.Donovan", "Brian W. Kergnighan"],"press": "Pearson Education update"}' localhost:8080/book/978-7-111-55842-2
+// 删除某个书籍
+curl -X DELETE -H "Content-Type:application/json"  localhost:8080/book/978-7-111-55842-2
 // 获取某个书籍
 curl -X GET -H "Content-Type:application/json"  localhost:8080/book/978-7-111-55842-2
 // 获取全部书籍
- curl -X GET -H "Content-Type:application/json"  localhost:8080/book        
+ curl -X GET -H "Content-Type:application/json"  localhost:8080/book   
+      
 ```
