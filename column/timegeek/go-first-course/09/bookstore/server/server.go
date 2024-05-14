@@ -5,10 +5,10 @@ import (
 	"bookstore/store"
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 type BookStoreServer struct {
@@ -31,9 +31,9 @@ func NewBookStoreServer(addr string, s store.Store) *BookStoreServer {
 			Addr: addr,
 		},
 	}
-
+	fmt.Println("port", addr)
 	router := mux.NewRouter()
-	router.HandleFunc("/book", srv.createBookHandler).Methods("POST")
+	router.HandleFunc("/book/create", srv.createBookHandler).Methods("POST")
 	router.HandleFunc("/book/{id}", srv.updateBookHandler).Methods("POST")
 	router.HandleFunc("/book/{id}", srv.getBookHandler).Methods("GET")
 	router.HandleFunc("/book", srv.getAllBooksHandler).Methods("GET")
@@ -75,6 +75,7 @@ func (bs *BookStoreServer) createBookHandler(w http.ResponseWriter, req *http.Re
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	response(w, "create-success")
 }
 
 func (bs *BookStoreServer) updateBookHandler(w http.ResponseWriter, req *http.Request) {
@@ -96,6 +97,7 @@ func (bs *BookStoreServer) updateBookHandler(w http.ResponseWriter, req *http.Re
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	response(w, "update-success")
 }
 
 func (bs *BookStoreServer) getBookHandler(w http.ResponseWriter, req *http.Request) {
@@ -136,6 +138,7 @@ func (bs *BookStoreServer) delBookHandler(w http.ResponseWriter, req *http.Reque
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	response(w, "del-success")
 }
 
 func response(w http.ResponseWriter, v interface{}) {
