@@ -24,6 +24,10 @@ type BookStoreServer struct {
 	//不需要导出BookStoreServer内部的字段。
 }
 
+/*
+*
+这种函数原型的设计是 Go 语言的一种惯用设计方法，也就是接受一个接口类型参数，返回一个具体类型。返回的具体类型组合了传入的接口类型的能力。
+*/
 func NewBookStoreServer(addr string, s store.Store) *BookStoreServer {
 	srv := &BookStoreServer{
 		s: s,
@@ -43,9 +47,18 @@ func NewBookStoreServer(addr string, s store.Store) *BookStoreServer {
 	return srv
 }
 
+/*
+*
+我们看到，这个函数把 BookStoreServer 内部的 http.Server 的运行，放置到一个单独的轻量级线程 Goroutine 中。
+这是因为，http.Server.ListenAndServe 会阻塞代码的继续运行，如果不把它放在单独的 Goroutine 中，后面的代码将无法得到执行。
+*/
 func (bs *BookStoreServer) ListenAndServe() (<-chan error, error) {
 	var err error
+	/** 为了检测到 http.Server.ListenAndServe 的运行状态，
+	我们再通过一个 channel（位于第 5 行的 errChan），在新创建的 Goroutine 与主 Goroutine 之间建立的通信渠道。通过这个渠道，这样我们能及时得到 http server 的运行状态。
+	*/
 	errChan := make(chan error)
+	// Goroutine
 	go func() {
 		err = bs.srv.ListenAndServe()
 		errChan <- err

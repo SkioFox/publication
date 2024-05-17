@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	/** 这种函数原型的设计是 Go 语言的一种惯用设计方法，也就是接受一个接口类型参数，返回一个具体类型。返回的具体类型组合了传入的接口类型的能力。*/
 	srv := server.NewBookStoreServer(":8080", s)
 
 	errChan, err := srv.ListenAndServe()
