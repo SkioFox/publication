@@ -194,6 +194,79 @@ func main() {
 
 ![img.png](img/img1.png)
 
+### go泛型
+1. 泛型的设计原理和产生历史
+2. 了解类型参数
+3. 定义泛型约束
+4. 明确使用场景
+```
+package main
+
+import (
+    "sort"
+    "testing"
+)
+
+// 如何在 Go 语言中使用泛型实现一个通用的排序方法，能够对 int 和 string 类型的切片进行排序。
+// sort.Interface -> IntSlice / StringSlice 泛型版
+// 定义了一个泛型约束接口 xsl，它限制了泛型类型参数必须是 int 或 string 类型。
+type xsl interface {
+    // 这里的 ~ 符号表示这个接口可以接受具体类型或其别名，例如 type myint int 也是被允许的。
+	~int | ~string
+}
+// 定义了一个泛型切片类型 xSlice，它可以存储任意实现 xsl 接口的类型。
+type xSlice[T xsl] []T
+
+// 实现 sort.Interface
+
+// 为了使用 sort.Sort 方法排序，我们需要实现 sort.Interface 接口。
+// 我们为 xSlice 类型实现了这个接口的三个方法：Len、Less 和 Swap。
+// 长度
+func (x xSlice[T]) Len() int           { return len(x) }
+// 比较大小
+func (x xSlice[T]) Less(i, j int) bool { return x[i] < x[j] }
+// 交换位置
+func (x xSlice[T]) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+// 定义一个通用的排序函数 sortX，它接收一个 xSlice 类型的数据并调用 sort.Sort 进行排序。
+func sortX[T xsl](data xSlice[T]) {
+	sort.Sort(data)
+}
+// 在 TestXSlice 测试函数中，我们测试了对 int 类型和 string 类型的切片进行排序。
+// *testing.T 是一个指向 testing.T 类型的指针，用于在测试函数中记录测试状态和输出测试日志。testing.T 是标准库 testing 包中的一个类型，它提供了很多用于编写测试代码的方法。
+func TestXSlice(t *testing.T) {
+// // 测试 int 切片排序
+	x1 := make(xSlice[int], 0, 5)
+	x1 = append(x1, 3)
+	x1 = append(x1, 10)
+	x1 = append(x1, 2)
+	x1 = append(x1, 0)
+	x1 = append(x1, 9)
+	sortX(x1)
+	t.Logf("[]~int x = %#v", x1) // 输出排序后的 int 切片
+    // 测试 string 切片排序 
+	type mystr string
+	x2 := []mystr{"ab", "ca", "fc", "ce", "bf"}
+	sortX(x2)
+	t.Logf("[]~string x = %#v", x2) // 输出排序后的string切片
+	
+    // 验证排序结果是否正确
+    expectedInt := xSlice[int]{0, 2, 3, 9, 10}
+    for i, v := range x1 {
+        if v != expectedInt[i] {
+            t.Errorf("expected %d, got %d", expectedInt[i], v)
+        }
+    }
+
+    expectedString := xSlice[mystr]{"ab", "bf", "ca", "ce", "fc"}
+    for i, v := range x2 {
+        if v != expectedString[i] {
+            t.Errorf("expected %s, got %s", expectedString[i], v)
+        }
+    }
+}
+
+```
+
 
 
 
