@@ -29,3 +29,25 @@ func (s *Server) UploadFile(ctx context.Context, req *pb.UploadFileRequest) (*pb
 }
 
 ```
+### go vet
+Go 官方提供了 go vet 工具可以用于对 Go 源码做一系列静态检查
+```shell
+go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+go: downloading golang.org/x/tools v0.1.5
+go: downloading golang.org/x/mod v0.4.2
+```
+我们就可以通过 go vet 扫描代码并检查这里面有没有变量遮蔽的问题
+
+```shell
+go vet -vettool=$(which shadow) -strict complex.go 
+./complex.go:13:12: declaration of "err" shadows declaration at line 11
+```
+### 代码块与作用域(避免变量遮蔽的原则)
+
+代码块有显式与隐式之分，显式代码块就是包裹在一对配对大括号内部的语句序列，而隐式代码块则不容易肉眼分辨，它是通过 Go 语言规范明确规定的。隐式代码块有五种，分别是宇宙代码块、包代码块、文件代码块、分支控制语句隐式代码块，以及 switch/select 的子句隐式代码块，理解隐式代码块是理解代码块概念以及后续作用域概念的前提与基础。
+
+作用域的概念是 Go 源码编译过程中标识符（包括变量）的一个属性。Go 编译器会校验每个标识符的作用域，如果它的使用范围超出其作用域，编译器会报错。
+
+不过呢，我们可以使用代码块的概念来划定每个标识符的作用域。划定原则就是声明于外层代码块中的标识符，其作用域包括所有内层代码块。但是，Go 的这种作用域划定也带来了变量遮蔽问题。简单的遮蔽问题，我们通过分析代码可以很快找出，复杂的遮蔽问题，即便是通过 go vet 这样的静态代码分析工具也难于找全。
+
+因此，我们只有了解变量遮蔽问题本质，在日常编写代码时注意同名变量的声明，注意短变量声明与控制语句的结合，才能从根源上尽量避免变量遮蔽问题的发生。
