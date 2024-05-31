@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"unsafe"
@@ -27,6 +28,37 @@ func Test() {
 	//fmt.Printf("0x%x\n", data)            // 输出数据指针的地址
 	//p := (*[5]byte)(unsafe.Pointer(data)) // 将数据指针转换为字节数组指针
 	dumpBytesArray((*p)[:]) // [h e l l o ]   // 输出底层数组的内容
+
+	// 对比下面两个切片的区别
+	var sl1 []int
+	var sl2 = []int{}
+	fmt.Print("========基本区别=========\n")
+	fmt.Printf("%v,len:%d,cap:%d,addr:%p\n", sl1, len(sl1), cap(sl1), &sl1)
+	fmt.Printf("%v,len:%d,cap:%d,addr:%p\n", sl2, len(sl2), cap(sl2), &sl2)
+	fmt.Printf("sl1==nil:%v\n", sl1 == nil)
+	fmt.Printf("sl2==nil:%v\n", sl2 == nil)
+	a1 := *(*[3]int)(unsafe.Pointer(&sl1))
+	a2 := *(*[3]int)(unsafe.Pointer(&sl2))
+	fmt.Print("========底层区别=========\n")
+	fmt.Println(a1)
+	fmt.Println(a2)
+
+	type SliceDemo struct {
+		Values []int
+	}
+	var s5 = SliceDemo{}
+	var s6 = SliceDemo{[]int{}}
+	bs1, _ := json.Marshal(s5)
+	bs2, _ := json.Marshal(s6)
+	fmt.Print("========序列化区别=========\n")
+	fmt.Println(a1)
+	fmt.Println(string(bs1))
+	fmt.Println(string(bs2))
+
+	// sl1是声明，还没初始化，是nil值，底层没有分配内存空间。
+	// sl2初始化了，不是nil值，底层分配了内存空间，有地址。
+	// https://qcrao.com/2019/04/02/dive-into-go-slice/
+	// https://tonybai.com/2022/02/15/whether-go-allocate-underlying-array-for-empty-slice/
 }
 
 func dumpBytesArray(arr []byte) {
