@@ -3,8 +3,15 @@ package test
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
+	"sort"
+	"sync"
 	"unsafe"
+)
+
+var (
+	mu sync.RWMutex
 )
 
 func Test() {
@@ -59,6 +66,21 @@ func Test() {
 	// sl2初始化了，不是nil值，底层分配了内存空间，有地址。
 	// https://qcrao.com/2019/04/02/dive-into-go-slice/
 	// https://tonybai.com/2022/02/15/whether-go-allocate-underlying-array-for-empty-slice/
+
+	// 测试map遍历与顺序 => 程序逻辑千万不要依赖遍历 map 所得到的的元素次序
+	m := map[int]int{
+		2: 12,
+		1: 11,
+		3: 13,
+	}
+	//for i := 0; i < 3; i++ {
+	//	doIteration(m)
+	//}
+	// 顺序
+	doIterationMap(m)
+	//doWrite(m)
+	//doWrite(m)
+	//doWrite(m)
 }
 
 func dumpBytesArray(arr []byte) {
@@ -67,4 +89,41 @@ func dumpBytesArray(arr []byte) {
 		fmt.Printf("%c ", b)
 	}
 	fmt.Printf("]\n")
+}
+func doIteration(m map[int]int) {
+	fmt.Printf("{ ")
+	for k, v := range m {
+		fmt.Printf("[%d, %d] ", k, v)
+	}
+	fmt.Printf("}\n")
+}
+func doIterationMap(m map[int]int) {
+	mu.RLock()
+	defer mu.RUnlock()
+	keys := []int{}
+	for k := range m {
+		keys = append(keys, k)
+	}
+	jsonKeys, err := json.Marshal(keys)
+	if err != nil {
+		log.Fatalf("Error serializing to JSON: %v", err)
+	}
+	fmt.Println("keys => ", jsonKeys)
+	fmt.Printf("keys=>%s \n", jsonKeys)
+	fmt.Println("keys=>%s", string(jsonKeys))
+	fmt.Printf("keys=>%s", string(jsonKeys))
+	sort.SliceStable(keys, func(x, y int) bool {
+		return x < y
+	})
+	for _, k := range keys {
+		fmt.Printf("[%d, %d] ", k, m[k])
+	}
+	fmt.Println()
+}
+func doWrite(m map[int]int) {
+	mu.Lock()
+	defer mu.Unlock()
+	for k, v := range m {
+		m[k] = v + 1
+	}
 }
