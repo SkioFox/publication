@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -81,6 +82,10 @@ func Test() {
 	//doWrite(m)
 	//doWrite(m)
 	//doWrite(m)
+	testForRange()
+	testForNewRange()
+	testForRightNewRange()
+	testForRightOrderRange()
 }
 
 func dumpBytesArray(arr []byte) {
@@ -125,5 +130,98 @@ func doWrite(m map[int]int) {
 	defer mu.Unlock()
 	for k, v := range m {
 		m[k] = v + 1
+	}
+}
+func testForRange() {
+	var m = []int{1, 2, 3, 4, 5}
+	for i, v := range m {
+		go func() {
+			// 全部输出4 5 => Goroutine 执行的闭包函数引用了它的外层包裹函数中的变量 i、v，这样，变量 i、v 在主 Goroutine 和新启动的 Goroutine 之间实现了共享，
+			// 而 i, v 值在整个循环过程中是重用的，仅有一份。在 for range 循环结束后，i = 4, v = 5，因此各个 Goroutine 在等待 3 秒后进行输出的时候，输出的是 i, v 的最终值。
+			fmt.Println("testForRange：", i, v)
+		}()
+	}
+	time.Sleep(time.Second * 5) // 这里的Sleep作用 => 确保所有 Goroutine 有时间完成输出 更好的做法是使用sync.WaitGroup
+}
+func testForNewRange() {
+	var m = []int{1, 2, 3, 4, 5}
+	{
+		i, v := 0, 0
+		for i, v = range m {
+			go func() {
+				fmt.Println("testForNewRange：", i, v) // 全部输出4 5
+			}()
+		}
+	}
+	time.Sleep(time.Second * 5)
+}
+func testForRightNewRange() {
+	// Goroutine 并不是在 range 循环之后才执行的。实际上，Goroutine 是在 range 循环的每次迭代中启动的。之所以看起来像是在 range 循环之后才执行，是因为 Goroutine 的调度和主 Goroutine 的执行速度之间的关系导致的。
+	// 当你在 range 循环的每次迭代中启动一个 Goroutine 时，这些 Goroutine 会被调度器安排去执行。由于 Go 的调度器是并发的，并且每个 Goroutine 的启动和执行并不是立即的，它们可能在主 Goroutine 执行完 range 循环后才开始运行。
+	// Goroutine 并不是在 range 循环之后才执行的，而是由于调度和执行的异步特性，导致看起来像是 range 循环结束后才执行。正确地捕获循环变量值和使用同步机制（如 sync.WaitGroup）可以确保 Goroutine 按预期执行并完成任务。
+	// 方法一：传递参数给 Goroutine
+	var m = []int{1, 2, 3, 4, 5}
+	var wg sync.WaitGroup
+	//for i, v := range m {
+	//	wg.Add(1) // 增加计数器
+	//	go func(i, v int) {
+	//		defer wg.Done()                            // Goroutine 完成时减少计数器
+	//		fmt.Println("testForRightNewRange:", i, v) // 即使我们在循环中按顺序启动 Goroutine，打印的顺序仍然可能是不确定的。这是因为每个 Goroutine 的启动和执行是并发的，具体的执行顺序由 Go 的调度器决定。
+	//		// 在这个输出中，Goroutine 的执行顺序并没有严格按照我们启动的顺序进行。这是因为 Goroutine 的调度是非确定性的，有可能某个 Goroutine 比其他 Goroutine 先获得执行时间片，从而导致输出顺序看似混乱。
+	//		/**
+	//		影响因素
+	//		几个影响 Goroutine 执行顺序的因素包括：
+	//
+	//		操作系统调度：操作系统调度器可能会在不同时间点切换不同的 Goroutine。
+	//		CPU负载：当前系统的CPU负载会影响Goroutine的调度。
+	//		Goroutine数量：较多的Goroutine会增加调度的不确定性。
+	//		Go调度器：Go 运行时调度器本身会根据多种因素调度Goroutine。
+	//		确保顺序输出
+	//		如果确实需要按顺序执行和输出，可以通过其他方式实现，例如在主 Goroutine 中按顺序启动和等待每个 Goroutine 完成，或者使用有序的通道通信。
+	//		*/
+	//	}(i, v)
+	//}
+	// 方法二：使用局部变量或者说闭包特性
+	for i, v := range m {
+		i, v := i, v // 重新声明并定义局部变量
+		wg.Add(1)    // 增加计数器
+		go func() {
+			defer wg.Done()
+			fmt.Println("testForRightNewRange:", i, v)
+		}()
+	}
+	wg.Wait() // 等待所有 Goroutine 完成
+}
+func testForRightOrderRange() {
+	/**
+	几个影响 Goroutine 执行顺序的因素包括：
+		操作系统调度：操作系统调度器可能会在不同时间点切换不同的 Goroutine。
+		CPU负载：当前系统的CPU负载会影响Goroutine的调度。
+		Goroutine数量：较多的Goroutine会增加调度的不确定性。
+		Go调度器：Go 运行时调度器本身会根据多种因素调度Goroutine。
+	确保顺序输出
+	如果确实需要按顺序执行和输出，可以通过其他方式实现，例如在主 Goroutine 中按顺序启动和等待每个 Goroutine 完成，或者使用有序的通道通信。
+	*/
+	var m = []int{1, 2, 3, 4, 5}
+	var wg sync.WaitGroup
+	ch := make(chan string, len(m))
+
+	for i, v := range m {
+		wg.Add(1)
+		go func(i, v int) {
+			defer wg.Done()
+			ch <- fmt.Sprintf("testForRightOrderRange: %d %d", i, v)
+		}(i, v)
+	}
+
+	// Wait for all Goroutines to finish
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	// Read and print messages from the channel in order
+	for msg := range ch {
+		fmt.Println(msg)
 	}
 }

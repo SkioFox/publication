@@ -275,4 +275,53 @@ Go 语言不支持在结构体类型定义中，递归地放入其自身类型�
 因此，结构体是可以接口自身类型的指针类型、以自身类型为元素类型的切片类型，以及以自身类型作为 value 类型的 map 类型的字段，而自己本身不行。 => 核心：因为指针、map、切片的变量元数据的内存占用大小是固定的。go是静态语言，对于一个类型，编译器要知道它的大小。如果嵌套T，那么编译器无法知道其大小。但如果是*T或[]T，编译器只需要知道指针大小以及切片这个“描述符”的大小即可。
 
 ### 接口类型
+
 ### 控制语句(if、switch case、for)
+
+for range 循环形式与 for 语句经典形式差异较大，除了循环体保留了下来，其余组成部分都“不见”了。其实那几部分已经被融合到 for range 的语义中了。
+
+for range 对于 string 类型来说，每次循环得到的 v 值是一个 Unicode 字符码点，也就是 rune 类型值，而不是一个字节，返回的第一个值 i 为该 Unicode 字符码点的内存编码（UTF-8）的第一个字节在字符串内存序列中的位置。使用 for 经典形式与使用 for range 形式，对 string 类型进行循环操作的语义是不同的。
+
+我们要对 map 进行循环操作，for range 是唯一的方法。每次循环，循环变量 k 和 v 分别会被赋值为 map 键值对集合中一个元素的 key 值和 value 值。
+
+channel 是 Go 语言提供的并发设计的原语，它用于多个 Goroutine 之间的通信，我们在后面的课程中还会详细讲解 channel。当 channel 类型变量作为 for range 语句的迭代对象时，for range 会尝试从 channel 中读取数据，使用形式是这样的：
+
+```go
+var c = make(chan int) 
+for v := range c {
+    // ... 
+}
+```
+带 label 的 continue 语句，通常出现于嵌套循环语句中，被用于跳转到外层循环并继续执行外层循环语句的下一个迭代。
+
+和 continue 语句一样，Go 也 break 语句增加了对 label 的支持。而且，和前面 continue 语句一样，如果遇到嵌套循环，break 要想跳出外层循环，用不带 label 的 break 是不够，因为不带 label 的 break 仅能跳出其所在的最内层循环。要想实现外层循环的跳出，我们还需给 break 加上 label。
+
+#### for 语句的常见“坑”与避坑方法
+    问题一：循环变量的重用=>循环变量的值与你之前的“预期”不符
+```go
+// 看示例 09/bookstore/test/tst.go
+func main() {
+    var m = []int{1, 2, 3, 4, 5}
+    for i, v := range m {
+        go func() {
+            time.Sleep(time.Second * 3)  
+			fmt.Println(i, v)
+        }
+    }
+    time.Sleep(time.Second * 10) // 这里的Sleep作用 => 确保所有 Goroutine 有时间完成输出
+	// 在并发编程中，Goroutine 是轻量级线程，它们会在后台并发执行。当我们启动多个 Goroutine 时，它们不会阻塞主线程的执行。主线程可能会在 Goroutine 执行完成之前就退出，从而导致 Goroutine 还没来得及输出就被终止。
+	// time.Sleep(time.Second * 10)作用是让主 Goroutine 休眠一段时间（这里是10秒），以确保在主 Goroutine 退出之前，所有启动的 Goroutine 有足够的时间完成它们的工作（输出内容）。
+	// 为什么需要等待
+    // 异步执行：Goroutine 是并发执行的，启动后会在后台运行，而主 Goroutine 会继续执行后续代码。
+    // 程序退出：如果主 Goroutine 执行完毕，整个程序就会退出，无论后台的 Goroutine 是否已经完成。因此，如果不等待，可能会导致 Goroutine 还没输出结果，程序就已经结束了。
+    // 解决方法
+    // 在实际应用中，简单的 time.Sleep 是一种不严谨的做法，因为我们不确定确切需要等待的时间。推荐使用同步机制，如 sync.WaitGroup，确保所有 Goroutine 完成后再退出程序。
+	// 使用 sync.WaitGroup
+    // sync.WaitGroup 是一个用于等待一组 Goroutine 完成的同步机制。以下是如何使用它确保所有 Goroutine 完成后再退出
+}
+```
+
+
+
+
+
