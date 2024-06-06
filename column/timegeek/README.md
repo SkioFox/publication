@@ -355,6 +355,14 @@ func main() {
 	fmt.Println("after for range loop, a =", a)
 }
 ```
+#### switch case
+注意点： 
+1. 无论 default 分支出现在什么位置，它都只会在所有 case 都没有匹配上的情况下才会被执行的。
+2. switch 语句各表达式的求值结果可以为各种类型值，只要它的类型支持比较操作就可以了。
+3. switch 语句支持声明临时变量。case 语句支持表达式列表。
+4. 取消了默认执行下一个 case 代码逻辑的语义。 fallthrough可以继续往下执行下一个case的需求。(这里有个坑点：个人感觉fallthrough，执行完 case1 后，继续case2里面的代码，而不用判断case2的条件是否成立，这一点设计的并不好，估计很多人会理解为继续判断case2条件)
+5. type switch => switch 关键字后面跟着的表达式为x.(type)，这种表达式形式是 switch 语句专有的，而且也只能在 switch 语句中使用。我们除了可以获得变量 x 的动态类型信息之外，也能获得其动态类型对应的值信息。
+6. 跳不出循环的 break => 看test中的案例09/bookstore/test
 
 
 

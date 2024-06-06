@@ -24,7 +24,8 @@ func Test() {
 	//testForSyncNewRange()
 	//testForOrderRange()
 	//testForRightOrderRange()
-	testArraySliceMapRange()
+	//testArraySliceMapRange()
+	testSwitchCase()
 }
 func testByte() {
 	// 测试byte字节格式
@@ -298,4 +299,80 @@ func testMap1() {
 		fmt.Println(k, v) // 反复运行这个例子多次，会得到两个不同的结果。
 	}
 	fmt.Println("counter is ", counter) // 反复运行这个例子多次，会得到两个不同的结果。
+}
+
+type I interface {
+	M()
+}
+type T struct{}
+
+func (T) M() {
+
+}
+func testSwitchCase() {
+	// type switch
+	var x interface{} = 13 // 你可以发现，在前面的 type switch 演示示例中，我们一直使用 interface{}这种接口类型的变量，Go 中所有类型都实现了 interface{}类型，所以 case 后面可以是任意类型信息。 但如果在 switch 后面使用了某个特定的接口类型 I，那么 case 后面就只能使用实现了接口类型 I 的类型了，否则 Go 编译器会报错。
+	switch v := x.(type) {
+	case nil:
+		println("v is nil")
+	case int:
+		println("the type of v is int, v =", v)
+	case string:
+		println("the type of v is string, v =", v)
+	case bool:
+		println("the type of v is bool, v =", v)
+	default:
+		println("don't support the type")
+	}
+	var t T
+	var i I = t
+	/**
+	在前面的 type switch 演示示例中，我们一直使用 interface{}这种接口类型的变量，Go 中所有类型都实现了 interface{}类型，所以 case 后面可以是任意类型信息。
+	但如果在 switch 后面使用了某个特定的接口类型 I，那么 case 后面就只能使用实现了接口类型 I 的类型了，否则 Go 编译器会报错。
+	*/
+	switch i.(type) {
+	case T:
+		println("it is type T")
+		//case int:
+		//	println("it is type int")
+		//case string:
+		//	println("it is type string")
+		/**
+		在这个例子中，我们在 type switch 中使用了自定义的接口类型 I。那么，理论上所有 case 后面的类型都只能是实现了接口 I 的类型。但在这段代码中，只有类型 T 实现了接口类型 I，Go 原生类型 int 与 string 都没有实现接口 I，于是在编译上述代码时，编译器会报出如下错误信息：
+		impossible type switch case: i (type I) cannot have dynamic type int
+		impossible type switch case: i (type I) cannot have dynamic type string
+		*/
+	}
+	// 跳不出循环的 break(不带 label 的 break 语句中断执行并跳出的，是同一函数内 break 语句所在的最内层的 for、switch 或 select。)
+	var sl = []int{5, 19, 6, 3, 8, 12}
+	var firstEven int = -1
+	// find first even number of the interger slice
+	for i := 0; i < len(sl); i++ {
+		switch sl[i] % 2 {
+		case 0:
+			firstEven = sl[i]
+			break
+		case 1:
+			// do nothing
+		}
+
+	}
+	// 这就是 Go 中 break 语句与 switch 分支结合使用会出现一个“小坑”。和我们习惯的 C 家族语言中的 break 不同，Go 语言规范中明确规定，不带 label 的 break 语句中断执行并跳出的，是同一函数内 break 语句所在的最内层的 for、switch 或 select。
+	// 所以，上面这个例子的 break 语句实际上只跳出了 switch 语句，并没有跳出外层的 for 循环，这也就是程序未按我们预期执行的原因。
+	println(firstEven) // 切片中的第一个偶数是 6，而输出的结果却成了切片的最后一个偶数 12
+	// 优化使用loop
+	var s2 = []int{5, 19, 6, 3, 8, 12}
+	var firstEven1 int = -1
+	// find first even number of the interger slice
+loop:
+	for i := 0; i < len(s2); i++ {
+		switch s2[i] % 2 {
+		case 0:
+			firstEven1 = s2[i]
+			break loop
+		case 1:
+			// do nothing
+		}
+	}
+	println(firstEven1) // 6
 }
