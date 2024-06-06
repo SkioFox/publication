@@ -16,6 +16,17 @@ var (
 )
 
 func Test() {
+	//testByte()
+	//testSliceDiff()
+	//testMapOrder()
+	//testForRange()
+	//testForNewRange()
+	//testForSyncNewRange()
+	//testForOrderRange()
+	//testForRightOrderRange()
+	testArraySliceMapRange()
+}
+func testByte() {
 	// 测试byte字节格式
 	s1 := []byte("你好，世界！")
 	fmt.Println("byte:", s1) // 111111111 [228 189 160 229 165 189 239 188 140 228 184 150 231 149 140 239 188 129]  UTF-8 编码的字符串的字节序列
@@ -36,7 +47,8 @@ func Test() {
 	//fmt.Printf("0x%x\n", data)            // 输出数据指针的地址
 	//p := (*[5]byte)(unsafe.Pointer(data)) // 将数据指针转换为字节数组指针
 	dumpBytesArray((*p)[:]) // [h e l l o ]   // 输出底层数组的内容
-
+}
+func testSliceDiff() {
 	// 对比下面两个切片的区别
 	var sl1 []int
 	var sl2 = []int{}
@@ -67,27 +79,23 @@ func Test() {
 	// sl2初始化了，不是nil值，底层分配了内存空间，有地址。
 	// https://qcrao.com/2019/04/02/dive-into-go-slice/
 	// https://tonybai.com/2022/02/15/whether-go-allocate-underlying-array-for-empty-slice/
-
+}
+func testMapOrder() {
 	// 测试map遍历与顺序 => 程序逻辑千万不要依赖遍历 map 所得到的的元素次序
 	m := map[int]int{
 		2: 12,
 		1: 11,
 		3: 13,
 	}
-	//for i := 0; i < 3; i++ {
-	//	doIteration(m)
-	//}
+	for i := 0; i < 3; i++ {
+		doIteration(m)
+	}
 	// 顺序
 	doIterationMap(m)
-	//doWrite(m)
-	//doWrite(m)
-	//doWrite(m)
-	testForRange()
-	testForNewRange()
-	testForRightNewRange()
-	testForRightOrderRange()
+	doWrite(m)
+	doWrite(m)
+	doWrite(m)
 }
-
 func dumpBytesArray(arr []byte) {
 	fmt.Printf("[")
 	for _, b := range arr {
@@ -155,7 +163,7 @@ func testForNewRange() {
 	}
 	time.Sleep(time.Second * 5)
 }
-func testForRightNewRange() {
+func testForSyncNewRange() {
 	// Goroutine 并不是在 range 循环之后才执行的。实际上，Goroutine 是在 range 循环的每次迭代中启动的。之所以看起来像是在 range 循环之后才执行，是因为 Goroutine 的调度和主 Goroutine 的执行速度之间的关系导致的。
 	// 当你在 range 循环的每次迭代中启动一个 Goroutine 时，这些 Goroutine 会被调度器安排去执行。由于 Go 的调度器是并发的，并且每个 Goroutine 的启动和执行并不是立即的，它们可能在主 Goroutine 执行完 range 循环后才开始运行。
 	// Goroutine 并不是在 range 循环之后才执行的，而是由于调度和执行的异步特性，导致看起来像是 range 循环结束后才执行。正确地捕获循环变量值和使用同步机制（如 sync.WaitGroup）可以确保 Goroutine 按预期执行并完成任务。
@@ -187,20 +195,18 @@ func testForRightNewRange() {
 		wg.Add(1)    // 增加计数器
 		go func() {
 			defer wg.Done()
-			fmt.Println("testForRightNewRange:", i, v)
+			fmt.Println("testForSyncNewRange:", i, v)
 		}()
 	}
 	wg.Wait() // 等待所有 Goroutine 完成
 }
-func testForRightOrderRange() {
+func testForOrderRange() {
 	/**
 	几个影响 Goroutine 执行顺序的因素包括：
 		操作系统调度：操作系统调度器可能会在不同时间点切换不同的 Goroutine。
 		CPU负载：当前系统的CPU负载会影响Goroutine的调度。
 		Goroutine数量：较多的Goroutine会增加调度的不确定性。
 		Go调度器：Go 运行时调度器本身会根据多种因素调度Goroutine。
-	确保顺序输出
-	如果确实需要按顺序执行和输出，可以通过其他方式实现，例如在主 Goroutine 中按顺序启动和等待每个 Goroutine 完成，或者使用有序的通道通信。
 	*/
 	var m = []int{1, 2, 3, 4, 5}
 	var wg sync.WaitGroup
@@ -210,7 +216,7 @@ func testForRightOrderRange() {
 		wg.Add(1)
 		go func(i, v int) {
 			defer wg.Done()
-			ch <- fmt.Sprintf("testForRightOrderRange: %d %d", i, v)
+			ch <- fmt.Sprintf("testForOrderRange: %d %d", i, v)
 		}(i, v)
 	}
 
@@ -222,6 +228,74 @@ func testForRightOrderRange() {
 
 	// Read and print messages from the channel in order
 	for msg := range ch {
-		fmt.Println(msg)
+		fmt.Println(msg) // 这里的顺序还是随机的，取决于goroutine的调度 => 虽然每个 Goroutine 按顺序发送消息到通道，但是由于 Goroutine 是并发执行的，其执行顺序是不确定的，因此接收到的消息顺序也可能是不确定的。
 	}
+}
+func testForRightOrderRange() {
+	var m = []int{1, 2, 3, 4, 5}
+	var wg sync.WaitGroup
+	// 使用一个切片 results 来存储每个 Goroutine 的输出，并确保按顺序打印这些输出。
+	results := make([]string, len(m))
+
+	for i, v := range m {
+		wg.Add(1)
+		go func(i, v int) {
+			defer wg.Done()
+			results[i] = fmt.Sprintf("testForRightOrderRange: %d %d", i, v)
+		}(i, v)
+	}
+
+	wg.Wait() // 等待所有 Goroutine 完成
+
+	for _, result := range results {
+		fmt.Println(result)
+	}
+}
+func testArraySliceMapRange() {
+	testArray()
+	testMap()
+	testMap1()
+}
+func testArray() {
+	// 参与 for range 循环的是 range 表达式的副本
+	var a = [5]int{1, 2, 3, 4, 5}
+	var r [5]int
+	fmt.Println("original a =", a)
+	//for i, v := range a {
+	//for i, v := range a[:] { // 用切片代替数组
+	for i, v := range &a { // 用数组指针代理数组
+		if i == 0 {
+			a[1] = 12
+			a[2] = 13
+		}
+		r[i] = v
+	}
+	fmt.Println("after for range loop, r =", r)
+	fmt.Println("after for range loop, a =", a)
+}
+func testMap() {
+	// 如果我们在循环的过程中，对 map 进行了修改，那么这样修改的结果是否会影响后续迭代呢？这个结果和我们遍历 map 一样，具有随机性。
+	// 我们日常编码遇到遍历 map 的同时，还需要对 map 进行修改的场景的时候，要格外小心。
+	var m = map[string]int{"tony": 21, "tom": 22, "jim": 23}
+	counter := 0
+	for k, v := range m {
+		if counter == 0 {
+			delete(m, "tony")
+		}
+		counter++
+		fmt.Println(k, v) // 反复运行这个例子多次，会得到两个不同的结果。
+	}
+	fmt.Println("counter is ", counter) // 反复运行这个例子多次，会得到两个不同的结果。
+}
+func testMap1() {
+	var m = map[string]int{"tony": 21, "tom": 22, "jim": 23}
+	counter := 0
+	for k, v := range m {
+		if counter == 0 {
+			m["lucy"] = 24
+		}
+		counter++
+		fmt.Println(k, v) // 反复运行这个例子多次，会得到两个不同的结果。
+	}
+	fmt.Println("counter is ", counter) // 反复运行这个例子多次，会得到两个不同的结果。
 }
