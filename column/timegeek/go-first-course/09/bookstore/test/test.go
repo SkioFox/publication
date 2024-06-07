@@ -25,7 +25,8 @@ func Test() {
 	//testForOrderRange()
 	//testForRightOrderRange()
 	//testArraySliceMapRange()
-	testSwitchCase()
+	//testSwitchCase()
+	testFunc()
 }
 func testByte() {
 	// 测试byte字节格式
@@ -375,4 +376,20 @@ loop:
 		}
 	}
 	println(firstEven1) // 6
+}
+func myAppend(sl []int, elems ...int) []int {
+	fmt.Printf("%T\n", elems) // []int
+	if len(elems) == 0 {
+		println("no elems to append")
+		return sl
+	}
+	sl = append(sl, elems...)
+	return sl
+}
+func testFunc() {
+	sl := []int{1, 2, 3}
+	sl = myAppend(sl) // no elems to append
+	fmt.Println(sl)   // [1 2 3]
+	sl = myAppend(sl, 4, 5, 6)
+	fmt.Println(sl) // [1 2 3 4 5 6]
 }
