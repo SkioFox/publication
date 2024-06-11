@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -26,7 +27,12 @@ func Test() {
 	//testForRightOrderRange()
 	//testArraySliceMapRange()
 	//testSwitchCase()
-	testFunc()
+	//testFunc()
+	//testError()
+	//testCustomError()
+	//testFmt()
+	//testErrIs()
+	testErrAs()
 }
 func testByte() {
 	// 测试byte字节格式
@@ -392,4 +398,203 @@ func testFunc() {
 	fmt.Println(sl)   // [1 2 3]
 	sl = myAppend(sl, 4, 5, 6)
 	fmt.Println(sl) // [1 2 3 4 5 6]
+}
+func doSomething(flag bool) error {
+	if !flag {
+		return errors.New("something went wrong")
+	}
+	return nil
+}
+func testError() {
+	// Go 标准库中有很多预定义的错误类型和创建错误的方法，例如 errors.New 和 fmt.Errorf。
+	err := doSomething(false)
+	if err != nil {
+		fmt.Println("Error occurred:", err)
+	} else {
+		fmt.Println("Success")
+	}
+}
+
+// 定义一个自定义错误类型
+type MyError struct {
+	Code    int
+	Message string
+}
+
+// 实现 error 接口
+func (e MyError) Error() string {
+	return fmt.Sprintf("Code: %d, Message: %s", e.Code, e.Message)
+}
+
+// 包装错误
+func doSomething1(flag bool) error {
+	if !flag {
+		// 在 Go 语言中，fmt.Errorf 是一个用于格式化和创建错误对象的函数。它类似于 fmt.Sprintf，但返回的是一个实现了 error 接口的错误对象。这
+		// 使得它非常适合用于创建包含详细信息的错误消息。
+		return fmt.Errorf("doSomething failed: %w", MyError{Code: 500, Message: "Internal Server Error"})
+	}
+	return nil
+}
+func testCustomError() {
+	err := doSomething1(false)
+	if err != nil {
+		fmt.Println("Error occurred:", err)
+		var myErr MyError
+		if errors.As(err, &myErr) {
+			// fmt.Sprintf 是 Go 语言标准库中的一个函数，用于格式化字符串。它返回一个格式化后的字符串，而不像 fmt.Printf 那样直接输出结果。
+			// fmt.Sprintf 类似于 C 语言中的 sprintf 函数，可以通过指定格式化动词将不同类型的变量格式化为字符串。
+			/**
+			主要作用
+				格式化字符串：将各种类型的数据格式化为字符串。
+				字符串拼接：方便地将多个值拼接成一个字符串。
+				生成带有动态数据的字符串：根据动态数据生成自定义的字符串。
+			*/
+			fmt.Println("Custom error code:", myErr.Code)
+		}
+	} else {
+		fmt.Println("Success")
+	}
+}
+func testFmt() {
+	// Println - 自动换行
+	fmt.Println("Hello, world!")
+
+	// Printf - 格式化输出
+	fmt.Printf("Hello, %s!\n", "Alice")
+	fmt.Printf("Number: %d\n", 42)
+
+	// Print - 不换行
+	fmt.Print("Hello, ")
+	fmt.Print("world!\n")
+
+	// Sprintf - 格式化字符串，不打印
+	s := fmt.Sprintf("Hello, %s!", "Bob")
+	fmt.Println(s)
+
+	// Scanf - 从输入读取格式化数据
+	var age int
+	fmt.Print("Enter your age: ")
+	fmt.Scanf("%d", &age)
+	fmt.Println("Your age is", age)
+
+	// Errorf - 创建一个格式化的错误消息
+	err := fmt.Errorf("an error occurred: %s", "file not found")
+	fmt.Println(err)
+}
+
+var ErrNotFound = errors.New("resource not found")
+
+func findResource() error {
+	return fmt.Errorf("failed to find resource: %w", ErrNotFound)
+}
+
+type MyError1 struct {
+	Message string
+}
+
+func (e MyError1) Error() string {
+	return e.Message
+}
+
+func (e MyError1) Is(target error) bool {
+	_, ok := target.(MyError1)
+	return ok
+}
+func testErrIs() {
+	// errors.Is 是 Go 1.13 版本引入的一个用于错误处理的函数。它主要用于判断一个错误是否是特定类型的错误或是由特定类型的错误包装而来的。这在处理复杂错误链时非常有用。
+	// 判断简单错误
+	err := ErrNotFound
+	if errors.Is(err, ErrNotFound) {
+		fmt.Println("Error is ErrNotFound")
+	}
+	// 判断包装错误
+	err1 := findResource()
+	if errors.Is(err1, ErrNotFound) {
+		fmt.Println("Error is ErrNotFound")
+	} else {
+		fmt.Println("Different error")
+	}
+	// 判断自定义错误类型
+	err2 := MyError1{Message: "custom error"}
+	if errors.Is(err2, MyError1{}) {
+		fmt.Println("Error is of type MyError")
+	}
+	/**
+	总结
+		1. errors.Is 用于判断一个错误是否等于或包含某个特定的错误。
+		2. 可以判断简单错误和包装错误。
+		3. 通过 fmt.Errorf 的 %w 动词，可以将错误包装起来，以保留错误链。
+		4. 自定义错误类型可以通过实现 Is 方法来支持 errors.Is 的判断。
+	*/
+}
+
+type MyError2 struct {
+	Message string
+}
+
+func (e MyError2) Error() string {
+	return e.Message
+}
+
+func (e MyError2) Unwrap() error {
+	return errors.New("underlying error")
+}
+
+func doSomething3() error {
+	return fmt.Errorf("doSomething failed: %w", MyError2{Message: "something went wrong"})
+}
+
+type NotFoundError struct {
+	Message string
+}
+
+func (e NotFoundError) Error() string {
+	return e.Message
+}
+
+func (e NotFoundError) Unwrap() error {
+	return errors.New("underlying not found error")
+}
+
+type ValidationError struct {
+	Message string
+}
+
+func (e ValidationError) Error() string {
+	return e.Message
+}
+
+func doSomething4() error {
+	notFoundErr := NotFoundError{Message: "resource not found"}
+	return fmt.Errorf("validation failed: %w", fmt.Errorf("wrapped error: %w", notFoundErr))
+}
+func testErrAs() {
+	// errors.As 是 Go 1.13 版本引入的一个用于错误处理的函数。它主要用于将错误链中的某个错误类型提取出来，以便进一步处理。这在处理嵌套或包装的错误时非常有用。
+	// errors.As 用于将错误链中的某个特定类型的错误提取出来。如果找到该类型的错误，则会将其赋值给目标变量，并返回 true；否则返回 false。
+	err := doSomething3()
+	var myErr MyError2
+	if errors.As(err, &myErr) {
+		fmt.Println("Caught MyError:", myErr)
+	} else {
+		fmt.Println("Different error")
+	}
+	// 检查嵌套错误
+	err4 := doSomething4()
+	var notFoundErr NotFoundError
+	var validationErr ValidationError
+
+	if errors.As(err4, &notFoundErr) {
+		fmt.Println("Caught NotFoundError:", notFoundErr)
+	} else if errors.As(err, &validationErr) {
+		fmt.Println("Caught ValidationError:", validationErr)
+	} else {
+		fmt.Println("Different error")
+	}
+	/**
+	总结
+		1. errors.As 用于将错误链中的某个特定类型的错误提取出来。
+		2. 如果找到该类型的错误，则会将其赋值给目标变量，并返回 true；否则返回 false。
+		3. 通过 errors.As，可以更方便地处理复杂的错误链，并根据具体的错误类型执行不同的逻辑。
+		4. 这种机制对于处理嵌套错误和包装错误非常有用，使得错误处理代码更加清晰和简洁。
+	*/
 }

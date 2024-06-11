@@ -414,13 +414,129 @@ f := func(){} // 使用变量声明形式的函数声明
   - 支持在函数内创建并通过返回值返回(当外部外部将一个内部函数作为返回值返回时，内部函数使用了外部函数的变量的现象就称为闭包)
   - 作为参数传入函数
   - 拥有自己的类型(每个函数都和整型值、字符串值等一等公民一样，拥有自己的类型，也就是函数类型)
+#### 如何让函数更健壮
+
+三原则:
+
+> 原则一：不要相信任何外部输入的参数。
+
+> 原则二：不要忽略任何一个错误。
+
+> 原则三：不要假定异常不会发生: 异常不是错误。错误是可预期的，也是经常会发生的，我们有对应的公开错误码和错误处理预案，但异常却是少见的、意料之外的。通常意义上的异常，指的是硬件异常、操作系统异常、语言运行时异常，还有更大可能是代码中潜在 bug 导致的异常，比如代码中出现了以 0 作为分母，或者是数组越界访问等情况。
+
+认识 Go 语言中的异常：panic
+
+> 不同编程语言表示异常（Exception）这个概念的语法都不相同。在 Go 语言中，异常这个概念由 panic 表示。一些教程或文章会把它译为恐慌，我这里依旧选择不译，保留 panic 的原汁原味。
+
+> 在 Go 中，panic 主要有两类来源，一类是来自 Go 运行时，另一类则是 Go 开发人员通过 panic 函数主动触发的。无论是哪种，一旦 panic 被触发，后续 Go 程序的执行过程都是一样的，这个过程被 Go 语言称为 panicking。panicking 会沿着函数调用栈向上走,直到被捕获或者recover或者程序退出。
+
+> recover函数：recover 是 Go 内置的专门用于恢复 panic 的函数，它必须被放在一个 defer 函数中才能生效。如果 recover 捕捉到 panic，它就会返回以 panic 的具体内容为错误上下文信息的错误值。如果没有 panic 发生，那么 recover 将返回 nil。而且，如果 panic 被 recover 捕捉到， panic 引发的 panicking 过程就会停止。
+
+> Go 标准库提供的 http server 采用的是，每个客户端连接都使用一个单独的 Goroutine 进行处理的并发处理模型。也就是说，客户端一旦与 http server 连接成功，http server 就会为这个连接新创建一个 Goroutine，并在这 Goroutine 中执行对应连接（conn）的 serve 方法，来处理这条连接上的客户端请求。无论在哪个 Goroutine 中发生未被恢复的 panic，整个程序都将崩溃退出。所以，为了保证处理某一个客户端连接的 Goroutine 出现 panic 时，不影响到 http server 主 Goroutine 的运行，Go 标准库在 serve 方法中加入了对 panic 的捕捉与恢复，serve 方法在一开始处就设置了 defer 函数，并在该函数中捕捉并恢复了可能出现的 panic。这样，即便处理某个客户端连接的 Goroutine 出现 panic，处理其他连接 Goroutine 以及 http server 自身都不会受到影响。这种局部不要影响整体的异常处理策略，在很多并发程序中都有应用。并且，捕捉和恢复 panic 的位置通常都在子 Goroutine 的起始处，这样设置可以捕捉到后面代码中可能出现的所有 panic
+
+> 我们可以使用 panic，部分模拟断言对潜在 bug 的提示功能。在 Go 标准库中，大多数 panic 的使用都是充当类似断言的作用的。
+
+> 不要混淆异常与错误: 作为 API 函数的作者，你一定不要将 panic 当作错误返回给 API 调用者。
+
+使用 defer 简化函数实现
+
+
+
+### 错误处理
+> 基于 Go 错误处理机制、统一的错误值类型以及错误值构造方法的基础上，Go 语言形成了多种错误处理的惯用策略，包括:
+- 透明错误处理策略
+- “哨兵”错误处理策略
+- 错误值类型检视策略
+- 错误行为特征检视策略
+
+这些策略都有适用的场合，但没有某种单一的错误处理策略可以适合所有项目或所有场合。 
+
+使用建议参考
+- 请尽量使用“透明错误”处理策略，降低错误处理方与错误值构造方之间的耦合； 
+- 如果可以通过错误值类型的特征进行错误检视，那么请尽量使用“错误行为特征检视策略”;
+- 在上述两种策略无法实施的情况下，再使用“哨兵”策略和“错误值类型检视”策略； 
+- Go 1.13 及后续版本中，尽量用errors.Is和errors.As函数替换原先的错误检视比较语句。
 
 ### 接口类型
+区分类型、接口、方法
+> 在 Go 语言中，接口、类型和方法是三个核心概念，它们分别扮演不同的角色并具有不同的用途。理解它们的区别和关系对编写清晰、模块化和可维护的代码至关重要。
+1. 类型（Type）
+> 类型是对一组数据和操作的抽象。在 Go 语言中，类型可以是基础类型（如 int、string）、结构体类型（struct）以及用户定义的类型。
 
-> 接口是一组方法的集合
-> 
+```go
+type Person struct {
+    Name string
+    Age  int
+}
+```
+2. 方法（Method）
+> 方法是与特定类型关联的函数。方法的接收者可以是值类型或指针类型。通过方法，可以为某个类型定义行为。
+```go
+func (p Person) Greet() string {
+    return "Hello, my name is " + p.Name
+}
+```
+3. 接口（Interface）
+> 接口是方法的集合，定义了一组方法的签名。任何类型只要实现了接口中的所有方法，就被认为实现了该接口。接口是一种抽象类型，它描述了类型的行为，而不是具体实现。
+```go
+type Greeter interface {
+    Greet() string
+}
+func sayHello(g Greeter) {
+    fmt.Println(g.Greet())
+}
 
+```
+4. 区别和关系
+```markdown
+  类型 vs. 方法
 
+  类型 是对数据的抽象和定义。
+  方法 是与类型关联的函数，定义了类型的行为。
 
+  类型 vs. 接口
 
+  类型 是具体的数据结构或数据的定义。
+  接口 是对行为的抽象定义，规定了一组方法。
 
+  方法 vs. 接口
+
+  方法 是具体类型的行为实现。
+  接口 是对行为的抽象描述，定义了方法的签名。
+```
+```go
+// 完整例子
+package main
+
+import "fmt"
+
+// 定义一个结构体类型 Person
+type Person struct {
+  Name string
+  Age  int
+}
+
+// 为 Person 类型定义一个方法 Greet
+func (p Person) Greet() string {
+  return "Hello, my name is " + p.Name
+}
+
+// 定义一个接口 Greeter
+type Greeter interface {
+  Greet() string
+}
+
+// 定义一个函数 sayHello，接收一个 Greeter 接口
+func sayHello(g Greeter) {
+  fmt.Println(g.Greet())
+}
+
+func main() {
+  // 创建一个 Person 类型的实例
+  p := Person{Name: "Alice", Age: 30}
+
+  // 由于 Person 类型实现了 Greeter 接口的方法，所以可以作为 Greeter 接口的实现类型传递给 sayHello 函数
+  sayHello(p)
+}
+// 看test用例 errorTest
+```
