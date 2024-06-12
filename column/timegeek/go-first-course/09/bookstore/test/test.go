@@ -32,7 +32,9 @@ func Test() {
 	//testCustomError()
 	//testFmt()
 	//testErrIs()
-	testErrAs()
+	//testErrAs()
+	//testDefer()
+	testDeferValue()
 }
 func testByte() {
 	// 测试byte字节格式
@@ -597,4 +599,71 @@ func testErrAs() {
 		3. 通过 errors.As，可以更方便地处理复杂的错误链，并根据具体的错误类型执行不同的逻辑。
 		4. 这种机制对于处理嵌套错误和包装错误非常有用，使得错误处理代码更加清晰和简洁。
 	*/
+}
+func testDefer() {
+	bar := func() (int, int) {
+		return 1, 2
+	}
+	var c chan int
+	var sl []int
+	var m = make(map[string]int, 10)
+	m["item1"] = 1
+	m["item2"] = 2
+	var a = complex(1.0, -1.4)
+	var sl1 []int
+	defer bar()
+	//defer append(sl, 11)
+	//defer cap(sl)
+	defer close(c)
+	//defer complex(2, -2)
+	defer copy(sl1, sl)
+	defer delete(m, "item2")
+	//defer imag(a)
+	//defer len(sl)
+	//defer make([]int, 10)
+	//defer new(*int)
+	defer panic(1)
+	defer print("hello, defer\n")
+	defer print("hello, defer123\n")
+	defer fmt.Printf("The complex number is: %v\n", a)
+	defer fmt.Printf("The complex number is: %f\n", a)
+	defer fmt.Printf("The complex number is: %.2f\n", a)
+	//defer real(a)
+	defer recover()
+	// append、cap、complex、len、make、new、imag、real 等内置函数都是不能直接作为 deferred 函数的，而 close、copy、delete、print、panic、recover 等内置函数则可以直接被 defer 设置为 deferred 函数。
+	// 对于那些不能直接作为 deferred 函数的内置函数，我们可以使用一个包裹它的匿名函数来间接满足要求
+	defer func() {
+		b := append(sl, 11)
+		fmt.Println(b)
+	}()
+}
+func testDeferValue() {
+	// defer 关键字后面的表达式，是在将 deferred 函数注册到 deferred 函数栈的时候进行求值的
+	foo1 := func() {
+		for i := 0; i <= 3; i++ {
+			// 后进先出原则(LIFO => Last In, First Out)
+			defer fmt.Println(i)
+		}
+	}
+	foo2 := func() {
+		for i := 0; i <= 3; i++ {
+			defer func(n int) {
+				fmt.Println(n)
+			}(i)
+		}
+	}
+	foo3 := func() {
+		for i := 0; i <= 3; i++ {
+			defer func() {
+				fmt.Println(i)
+			}()
+		}
+	}
+	fmt.Println("foo1 result:")
+	foo1()
+	fmt.Println("\nfoo2 result:")
+	foo2()
+	fmt.Println("\nfoo3 result:")
+	foo3()
+	// 无论以何种形式将函数注册到 defer 中，deferred 函数的参数值都是在注册的时候进行求值的。
 }
