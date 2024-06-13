@@ -34,7 +34,14 @@ func Test() {
 	//testErrIs()
 	//testErrAs()
 	//testDefer()
-	testDeferValue()
+	//testDeferValue()
+	//testReciever()
+	// https://tonybai.com/2018/03/20/the-analysis-of-output-results-of-a-go-code-snippet/
+	// https://tonybai.com/2015/09/17/7-things-you-may-not-pay-attation-to-in-go/
+	//testReciever1()
+	//testReciever2()
+	//testReciever3()
+	testMthodCollect()
 }
 func testByte() {
 	// 测试byte字节格式
@@ -666,4 +673,120 @@ func testDeferValue() {
 	fmt.Println("\nfoo3 result:")
 	foo3()
 	// 无论以何种形式将函数注册到 defer 中，deferred 函数的参数值都是在注册的时候进行求值的。
+}
+func testReciever() {
+	//var t T
+	//f1 := (*T).Set // f1的类型，也是*T类型Set方法的类型：func (t *T, int)int
+	//f2 := T.Get    // f2的类型，也是T类型Get方法的类型：func(t T)int
+	//fmt.Printf("the type of f1 is %T\n", f1)
+	//fmt.Printf("the type of f2 is %T\n", f2)
+	//fmt.Println(f2(t)) // 3
+}
+
+type field struct {
+	name string
+}
+
+// 这里如果将*field改成field则能正常输出test => Reciever3
+func (p field) print() {
+	//fmt.Printf("p:%s \n", p)
+	fmt.Println(p.name)
+}
+func testReciever1() {
+	//var wg sync.WaitGroup
+	// 由于 Goroutine 调度顺序不同，运行结果中的顺序可能不同
+	// 迭代 data1 时，由于 data1 中的元素类型是 field 指针 (*field)，因此赋值后 v 就是元素地址，与 print 的 receiver 参数类型相同，
+	// 每次调用 (*field).print 函数时直接传入的 v 即可，实际上传入的也是各个 field 元素的地址；
+	data1 := []*field{{"one"}, {"two"}, {"three"}}
+	for _, v := range data1 {
+		//wg.Add(1)
+		go v.print() // 正常输出
+	}
+	// 迭代 data2 时，由于 data2 中的元素类型是 field（非指针），与 print 的 receiver 参数类型不同，因此需要将其取地址后再传入 (*field).print 函数。
+	// 这样每次传入的 &v 实际上是变量 v 的地址，而不是切片 data2 中各元素的地址。
+	//  for range 使用时应注意的几个问题，其中循环变量复用是关键的一个。这里的 v 在整个 for range 过程中只有一个，因此 data2 迭代完成之后，v 是元素“six”的拷贝。
+	data2 := []field{{"four"}, {"five"}, {"six"}}
+	for i, v := range data2 {
+		//wg.Add(2)
+		// 传入的 &v 实际上是变量 v 的地址,由于变量服用，都是最后一个元素的地址
+		go v.print() // 输出six
+		// 修改正确方式
+		go func(f *field) {
+			f.print() // 正常输出
+		}(&data2[i])
+	}
+	//defer wg.Done()
+	//wg.Wait()
+	//time.Sleep(5 * time.Second)
+}
+func testReciever2() {
+	//var wg sync.WaitGroup
+	// 由于 Goroutine 调度顺序不同，运行结果中的顺序可能不同
+	//data1 := []*field{{"one"}, {"two"}, {"three"}}
+	//for i, v := range data1 {
+	//	//wg.Add(1)
+	//	fmt.Printf("i: %d,v:%s \n", i, v)
+	//	go (*field).print(v)
+	//}
+	data2 := []field{{"four"}, {"five"}, {"six"}}
+	for i, v := range data2 {
+		// wg.Add(1)
+		fmt.Printf("i: %d,v:%s \n", i, v)
+		// 传入的 &v 实际上是变量 v 的地址,这里v在range循环的时候是变量复用的，所以地址是v的地址，又因为go协程启动速度低于for循环的速度，这是v中存储的地址都是6
+		go (*field).print(&v)       // 输出six six six
+		time.Sleep(1 * time.Second) // 通过延时可以拿到正常值four five six
+		//go (*field).print(&data2[i]) // 正常输出 four five six
+	}
+	//defer wg.Done()
+	//wg.Wait()
+	//time.Sleep(5 * time.Second)
+}
+func testReciever3() {
+	data1 := []*field{{"one"}, {"two"}, {"three"}}
+	for i, v := range data1 {
+		fmt.Printf("i: %d,v:%s \n", i, v)
+		go v.print()
+	}
+	data2 := []field{{"four"}, {"five"}, {"six"}}
+	for i, v := range data2 {
+		fmt.Printf("i: %d,v:%s \n", i, v)
+		go v.print()
+	}
+	time.Sleep(3 * time.Second) // 保证执行完
+}
+func dumpMethodSet(i interface{}) {
+	// 为了方便查看一个非接口类型的方法集合，我这里提供了一个函数 dumpMethodSet，用于输出一个非接口类型的方法集合：
+	dynTyp := reflect.TypeOf(i)
+	if dynTyp == nil {
+		fmt.Printf("there is no dynamic type\n")
+		return
+	}
+	n := dynTyp.NumMethod()
+	if n == 0 {
+		fmt.Printf("%s's method set is empty!\n", dynTyp)
+		return
+	}
+	fmt.Printf("%s's method set:\n", dynTyp)
+	for j := 0; j < n; j++ {
+		fmt.Println("-", dynTyp.Method(j).Name)
+	}
+	fmt.Printf("\n")
+}
+
+type T1 struct{}
+
+func (T1) M1()  {}
+func (T1) M2()  {}
+func (*T1) M3() {}
+func (*T1) M4() {}
+func testMthodCollect() {
+	var n int
+	dumpMethodSet(n)
+	dumpMethodSet(&n)
+	var t T1
+	dumpMethodSet(t)
+	dumpMethodSet(&t)
+	// Go 语言规定，*T 类型的方法集合包含所有以 *T 为 receiver 参数类型的方法，以及所有以 T 为 receiver 参数类型的方法。这就是这个示例中为何 *T 类型的方法集合包含四个方法的原因。
+	// 实例要赋值给接口的前提是，改实例实现了接口的所有方法
+
 }
