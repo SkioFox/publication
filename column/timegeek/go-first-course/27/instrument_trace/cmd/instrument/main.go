@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bigwhite/instrument_trace/instrumenter"
-	"github.com/bigwhite/instrument_trace/instrumenter/ast"
+	"github.com/SkioFox/publication/column/timegeek/go-first-course/27/instrumemt_trace/instrumenter"
+	"github.com/SkioFox/publication/column/timegeek/go-first-course/27/instrumemt_trace/instrumenter/ast"
 )
 
 var (
