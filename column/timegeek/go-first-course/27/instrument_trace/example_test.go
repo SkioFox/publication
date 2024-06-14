@@ -1,7 +1,7 @@
 package trace_test
 
 import (
-	trace "github.com/bigwhite/instrument_trace"
+	trace "github.com/SkioFox/publication/column/timegeek/go-first-course/27/instrument_trace"
 )
 
 func a() {
