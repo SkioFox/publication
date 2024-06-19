@@ -332,6 +332,9 @@ func authHandler(h http.Handler) http.Handler {
 			http.Error(w, "bad auth param", http.StatusUnauthorized)
 			return
 		}
+		/**
+		执行 h.ServeHTTP(w, r) 的作用是调用传入的 http.Handler 接口的 ServeHTTP 方法，实际上执行的是你传入的具体处理器的逻辑。=> 当执行 h.ServeHTTP(w, r) 时，实际上是调用了 greetings(w, r)。
+		*/
 		h.ServeHTTP(w, r)
 	})
 }
