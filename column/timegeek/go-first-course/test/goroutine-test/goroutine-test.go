@@ -1,8 +1,10 @@
 package goroutine_test
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 func Test() {
@@ -262,12 +264,13 @@ func testForRange() {
 
 /*
 *
+这里会死锁
 for select 语句：
 
 	使用 for select 语句可以在一个循环中处理多个通道操作。它允许在每次循环迭代时选择处理一个或多个可用的通道操作。
 	可以与 case <-ch: 结合使用来读取通道中的数据，并结合其他 case 来处理其他事件或通道操作。
 */
-func testForSelect() {
+func testForSelectLockError() {
 	ch1 := make(chan int)
 	ch2 := make(chan string)
 	var wg sync.WaitGroup
@@ -302,6 +305,10 @@ func testForSelect() {
 		for {
 			select {
 			case value1, ok := <-ch1:
+				/**
+				当其中一个发送 goroutine 完成并关闭通道时，接收数据的 goroutine 会继续在 for select 循环中等待另一个通道的数据。如果此时没有新的数据到来，且所有发送 goroutine 都已经完成并关闭了通道，接收数据的 goroutine 会一直阻塞，导致程序死锁。
+				所以这里需要对通道进行判空并跳出接收的循环
+				*/
 				if !ok {
 					fmt.Println("Channel 1 closed")
 					return
@@ -314,9 +321,106 @@ func testForSelect() {
 				}
 				fmt.Println("Received from Channel 2:", value2)
 			}
+			//if ch1 == nil && ch2 == nil {
+			//	break
+			//}
 		}
 	}()
 
+	wg.Wait()
+	fmt.Println("All data received")
+}
+func testForSelectNoLock() {
+	//ch1 := make(chan int)
+	//ch2 := make(chan string)
+	//var wg sync.WaitGroup
+	//// 启动两个 goroutine 向不同的通道发送数据
+	//wg.Add(2)
+	//go func() {
+	//	defer close(ch1)
+	//	defer wg.Done()
+	//	for i := 0; i < 5; i++ {
+	//		ch1 <- i
+	//	}
+	//}()
+	//go func() {
+	//	defer close(ch2)
+	//	defer wg.Done()
+	//	for i := 0; i < 5; i++ {
+	//		ch2 <- fmt.Sprintf("Message %d", i)
+	//	}
+	//}()
+	//// 使用 for select 语句同时读取多个通道数据
+	//for {
+	//	select {
+	//	case value1, ok := <-ch1:
+	//		if !ok {
+	//			ch1 = nil // 重点：设置为 nil 以防止再次选择，死锁的原因
+	//		} else {
+	//			fmt.Println("Received from Channel 1:", value1)
+	//		}
+	//	case value2, ok := <-ch2:
+	//		if !ok {
+	//			ch2 = nil // 重点：设置为 nil 以防止再次选择，死锁的原因
+	//		} else {
+	//			fmt.Println("Received from Channel 2:", value2)
+	//		}
+	//	}
+	//
+	//	// 如果两个通道都已经关闭，跳出循环
+	//	if ch1 == nil && ch2 == nil {
+	//		break
+	//	}
+	//}
+	//wg.Wait()
+	//fmt.Println("All data received")
+	// 更加完善的写法
+	ch1 := make(chan int)
+	ch2 := make(chan string)
+	var wg sync.WaitGroup
+
+	// 启动两个 goroutine 向不同的通道发送数据
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 5; i++ {
+			ch1 <- i
+		}
+		close(ch1) // 发送完成后关闭通道
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 5; i++ {
+			ch2 <- fmt.Sprintf("Message %d", i)
+		}
+		close(ch2) // 发送完成后关闭通道
+	}()
+
+	// 使用一个 goroutine 读取两个通道的数据
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for ch1 != nil || ch2 != nil { // select之前先判空
+			select {
+			case value1, ok := <-ch1:
+				if !ok {
+					fmt.Println("Channel 1 closed")
+					ch1 = nil // 设置为 nil 以防止再次选择
+				} else {
+					fmt.Println("Received from Channel 1:", value1)
+				}
+			case value2, ok := <-ch2:
+				if !ok {
+					fmt.Println("Channel 2 closed")
+					ch2 = nil // 设置为 nil 以防止再次选择
+				} else {
+					fmt.Println("Received from Channel 2:", value2)
+				}
+			}
+		}
+	}()
+
+	// 等待所有 goroutine 完成
 	wg.Wait()
 	fmt.Println("All data received")
 }
@@ -358,6 +462,46 @@ func testArrowUse() {
 }
 func UseAgeReadChannel() {
 	//testForRange()
-	testForSelect()
+	//testForSelectLockError()
 	//testArrowUse()
+	testForSelectNoLock()
+}
+func spawn(f func() error) <-chan error {
+	c := make(chan error)
+	go func() {
+		c <- f()
+	}()
+	return c
+}
+func TestChannelConnect() {
+	/**
+	这个示例在 main goroutine 与子 goroutine 之间建立了一个元素类型为 error 的 channel，子 goroutine 退出时，会将它执行的函数的错误返回值写入这个 channel，main goroutine 可以通过读取 channel 的值来获取子 goroutine 的退出状态。
+	*/
+	c := spawn(func() error {
+		time.Sleep(2 * time.Second)
+		return errors.New("timeout")
+	})
+	fmt.Println(<-c)
+}
+func deadloop() {
+	for {
+
+	}
+}
+
+/*
+*
+goroutine调度
+*/
+func TestGoroutiineScheduling() {
+	/**
+	1、可以定时 1 秒间隔地不断看到“I got scheduled!”输出；
+	2、main 函数中，go deadloop() 语句前添加 runtime.GOMAXPROCS(1)，即可使 main goroutine 在创建 deadloop goroutine 之后无法继续得到调度。
+	*/
+	//runtime.GOMAXPROCS(1)
+	go deadloop()
+	for {
+		time.Sleep(time.Second * 1)
+		fmt.Println("I got scheduled!")
+	}
 }

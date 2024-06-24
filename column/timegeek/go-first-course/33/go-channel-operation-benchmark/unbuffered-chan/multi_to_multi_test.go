@@ -47,6 +47,10 @@ func recv() {
 	<-c2
 }
 
+/*
+*
+多接收多发送性能基准测试
+*/
 func BenchmarkUnbufferedChanNToNSend(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		send("hello")
