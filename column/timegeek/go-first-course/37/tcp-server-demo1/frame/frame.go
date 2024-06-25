@@ -34,6 +34,13 @@ func NewMyFrameCodec() StreamFrameCodec {
 	return &myFrameCodec{}
 }
 
+/*
+*
+注意事项：
+1. 网络字节序使用大端字节序（BigEndian），因此无论是 Encode 还是 Decode，我们都是用 binary.BigEndian；
+2. binary.Read 或 Write 会根据参数的宽度，读取或写入对应的字节个数的字节，这里 totalLen 使用 int32，那么 Read 或 Write 只会操作数据流中的 4 个字节；
+3. 这里没有设置网络 I/O 操作的 Deadline，io.ReadFull 一般会读满你所需的字节数，除非遇到 EOF 或 ErrUnexpectedEOF。
+*/
 func (p *myFrameCodec) Encode(w io.Writer, framePayload FramePayload) error {
 	var f = framePayload
 	var totalLen int32 = int32(len(framePayload)) + 4

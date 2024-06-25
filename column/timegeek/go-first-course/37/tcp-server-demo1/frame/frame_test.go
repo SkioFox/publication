@@ -8,6 +8,15 @@ import (
 	"testing"
 )
 
+/*
+*
+在工程实践中，保证打包与解包正确的最有效方式就是编写单元测试，StreamFrameCodec 接口的 Decode 和 Encode 方法的参数都是接口类型，这让我们可以很容易为 StreamFrameCodec 接口的实现编写测试用例。
+go test -cover . 可以查看用例的覆盖率
+
+测试 Encode 方法，我们其实不需要建立真实的网络连接，只要用一个满足
+io.Writer 的 bytes.Buffer 实例“冒充”真实网络连接就可以了，同时 bytes.Buffer 类型也实现了 io.Reader 接口，我们可以很方便地从中读取出 Encode 后的内容，并进行校验比对。
+为了提升测试覆盖率，我们还需要尽可能让测试覆盖到所有可测的错误执行分支上。这里，我模拟了 Read 或 Write 出错的情况，让执行流进入到 Decode 或 Encode 方法的错误分支中
+*/
 func TestNewMyFrameCodec(t *testing.T) {
 	codec := NewMyFrameCodec()
 	if codec == nil {
@@ -18,6 +27,9 @@ func TestNewMyFrameCodec(t *testing.T) {
 func TestEncode(t *testing.T) {
 	codec := NewMyFrameCodec()
 	buf := make([]byte, 0, 128)
+	/**
+	bytes.Buffer 类型实现了 io.Reader 接口，我们可以很方便地从中读取出 Encode 后的内容，并进行校验比对。
+	*/
 	rw := bytes.NewBuffer(buf)
 
 	err := codec.Encode(rw, []byte("hello"))
@@ -59,7 +71,7 @@ func TestDecode(t *testing.T) {
 type ReturnErrorWriter struct {
 	W  io.Writer
 	Wn int // 第几次调用Write返回错误
-	wc int // 写操作次数技术
+	wc int // 写操作次数计数
 }
 
 func (w *ReturnErrorWriter) Write(p []byte) (n int, err error) {

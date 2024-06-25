@@ -36,6 +36,16 @@ func handlePacket(framePayload []byte) (ackFramePayload []byte, err error) {
 }
 
 func handleConn(c net.Conn) {
+	/**
+	handleConn的调用结构
+			read frame from conn
+				 ->frame decode
+					 -> handle packet
+						 -> packet decode
+						 -> packet(ack) encode
+	              ->frame(ack)
+			encode write ack frame to conn
+	*/
 	defer c.Close()
 	frameCodec := frame.NewMyFrameCodec()
 
@@ -66,6 +76,11 @@ func handleConn(c net.Conn) {
 	}
 }
 
+/*
+*
+一个基于 TCP 的自定义应用层协议的经典阻塞式的服务端就完成了。不过这里的服务端依旧是一个简化的实现，比如我们这里没有考虑支持优雅退出、没有捕捉某个链接上出现
+的可能导致整个程序退出的 panic 等，这些我也想作为作业留给你。
+*/
 func main() {
 	l, err := net.Listen("tcp", ":8888")
 	if err != nil {
