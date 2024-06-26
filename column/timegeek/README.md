@@ -1,5 +1,9 @@
 ## note
 
+课程地址1：https://learn.lianglianglee.com/%e4%b8%93%e6%a0%8f/Tony%20Bai%20%c2%b7%20Go%e8%af%ad%e8%a8%80%e7%ac%ac%e4%b8%80%e8%af%be/00%20%e5%bc%80%e7%af%87%e8%af%8d%20%e8%bf%99%e6%a0%b7%e5%85%a5%e9%97%a8Go%ef%bc%8c%e6%89%8d%e8%83%bd%e5%b0%91%e8%b5%b0%e5%bc%af%e8%b7%af.md
+
+课程地址2: https://time.geekbang.com/column/intro/100093501?tab=catalog
+
 ### 变量声明
 > 如果没有显式为变量赋予初值，Go 编译器会为变量赋予这个类型的零值。 整数类型是0、浮点类型是0.0 、布尔是false、指针、接口、切片、channel、map和函数是nil
 
@@ -1067,3 +1071,11 @@ TCP/IP模型的层次之间界线较模糊，更加灵活。
     - 第二步是性能剖析。要想优化程序，我们首先要找到可能影响程序性能的“瓶颈点”，这一步的任务，就是通过各种工具和方法找到这些“瓶颈点”。
     - 第三步是代码优化。我们要针对上一步找到的“瓶颈点”进行分析，找出它们成为瓶颈的原因，并有针对性地实施优化。
     - 第四步是与基准比较，确定优化效果。这一步，我们会采集优化后的程序的性能数据，与第一步的性能基准进行比较，看执行上述的优化措施后，是否提升了程序的性能。
+##### 优化(带缓存的网络I/O + 重用内存对象)
+> 以Docker为代表的轻量级容器（container）的兴起，让这些工具的部署、安装都变得十分简单，这里我们就使用docker-compose工具，基于容器安装Prometheus+Grafana的组合。
+> 我建议你使用一台Linux主机来安装这些工具，因为docker以及docker-compose工具，在Linux平台上的表现最为成熟稳定。我这里不再详细说明docker与docker-compose工具的安装方法了，
+> 你可以参考docker(https://docs.docker.com/get-docker/)安装教程以及docker-compose(https://docs.docker.com/compose/install/)安装教程自行在Linux上安装这两个工具。
+
+##### pprof(https://github.com/gperftools/gperftools)
+> Go 是“自带电池”（battery included）的语言，拥有着让其他主流语言羡慕的工具链，Go 同样也内置了对 Go 代码进行性能剖析的工具：pprof。
+

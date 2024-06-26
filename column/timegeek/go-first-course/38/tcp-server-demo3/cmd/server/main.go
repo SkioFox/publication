@@ -44,6 +44,9 @@ func handleConn(c net.Conn) {
 		c.Close()
 	}()
 	frameCodec := frame.NewMyFrameCodec()
+	/*
+		我们新增了一个读缓存变量（rbuf）和一个写缓存变量（wbuf），我们用这两个变量替换掉传给frameCodec.Decode和frameCodec.Encode的net.Conn参数。
+	*/
 	rbuf := bufio.NewReader(c)
 	wbuf := bufio.NewWriter(c)
 
