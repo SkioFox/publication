@@ -1,6 +1,6 @@
 package main
 
-import channel_test "github.com/publication/column/timegeek/go-first-course/test/channel-test"
+import generics_test "github.com/publication/column/timegeek/go-first-course/test/generics-test"
 
 func main() {
 	//fmt.Println("test")
@@ -34,5 +34,9 @@ func main() {
 	//channel_test.TestChannelUseCountingSemaphore()
 	//channel_test.TestCondition()
 	//channel_test.TestCondition1()
-	channel_test.TestDeadLock2()
+	//channel_test.TestDeadLock2()
+	//generics_test.TestGenericsConstraint(1, 2)
+	//generics_test.TestGenericsConstraint1()
+	//generics_test.TestCstConstraint()
+	generics_test.TestCstConstraint1()
 }
