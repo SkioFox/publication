@@ -505,3 +505,235 @@ func TestGoroutiineScheduling() {
 		fmt.Println("I got scheduled!")
 	}
 }
+
+func workerTest(args ...interface{}) {
+	if len(args) == 0 {
+		return
+	}
+	interval, ok := args[0].(int)
+	if !ok {
+		return
+	}
+
+	time.Sleep(time.Second * (time.Duration(interval)))
+}
+
+func spawnTest(f func(args ...interface{}), args ...interface{}) chan struct{} {
+	c := make(chan struct{})
+	go func() {
+		f(args...)
+		c <- struct{}{}
+	}()
+	return c
+}
+
+/*
+*
+测试goroutine通信
+*/
+func TestGoroutingSingal() {
+	done := spawnTest(workerTest, 10)
+	println("spawn a worker goroutine")
+	<-done
+	println("worker done")
+}
+
+var OK = errors.New("ok")
+
+func workerWithError(args ...interface{}) error {
+	if len(args) == 0 {
+		return errors.New("invalid args")
+	}
+	interval, ok := args[0].(int)
+	if !ok {
+		return errors.New("invalid interval arg")
+	}
+
+	time.Sleep(time.Second * (time.Duration(interval)))
+	return OK
+}
+
+func spawnWithError(f func(args ...interface{}) error, args ...interface{}) chan error {
+	c := make(chan error)
+	go func() {
+		c <- f(args...)
+	}()
+	return c
+}
+
+/*
+*
+我们将 channel 中承载的类型由struct{}改为了error，这样 channel 承载的信息就不仅仅是一个“信号”了，还携带了“有价值”的信息：新 goroutine 的结束状态。
+*/
+func TestGoroutingSingalWithError() {
+	done := spawnWithError(workerWithError, 5)
+	println("spawn worker1")
+	err := <-done
+	fmt.Println("worker1 done:", err)
+	done = spawnWithError(workerWithError)
+	println("spawn worker2")
+	err = <-done
+	fmt.Println("worker2 done:", err)
+}
+func spawnGroup(n int, f func(args ...interface{}), args ...interface{}) chan struct{} {
+	c := make(chan struct{})
+	var wg sync.WaitGroup
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			name := fmt.Sprintf("worker-%d:", i)
+			f(args...)
+			println(name, "done")
+			wg.Done() // worker done!
+		}(i)
+	}
+
+	go func() {
+		wg.Wait()
+		c <- struct{}{}
+	}()
+
+	return c
+}
+
+/*
+*
+有些场景中，goroutine 的创建者可能会创建不止一个 goroutine，并且需要等待全部新 goroutine 退出。我们可以通过 Go 语言提供的sync.WaitGroup实现等待多个 goroutine 退出的模式
+*/
+func TestGoroutingSingalWithSyncWaitGroup() {
+	done := spawnGroup(5, workerTest, 3)
+	println("spawn a group of workers")
+	<-done
+	println("group workers done")
+}
+
+/*
+*
+超时退出
+在下述代码中，我们通过一个定时器(time.Timer)设置了超时等待时间，并通过select原语同时 timer 和done channel，哪个先返回数据就执行哪个 case 分支。
+*/
+func TestGoroutineTimeout() {
+	done := spawnGroup(5, workerTest, 30)
+	println("spawn a group of workers")
+
+	timer := time.NewTimer(time.Second * 5)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		println("wait group workers exit timeout!")
+	case <-done:
+		println("group workers done")
+	}
+}
+
+/*
+*
+前面的几个场景中，goroutine 的创建者都是在被动地等待着新 goroutine 的退出。
+但很多时候，goroutine 创建者需要主动通知那些新 goroutine 退出，尤其是当 main goroutine 作为创建者时。main goroutine 退出意味着 Go 程序的终止，
+而粗暴地直接让 main goroutine 退出的方式可能会导致业务数据的损坏、不完整或丢失。我们可以通过“notify-and-wait（通知并等待）”模式来满足这一场景的要求。
+虽然这一模式也不能完全避免“损失”，但是它给了各个 goroutine 一个“挽救数据”的机会，可以尽可能地减少损失的程度。
+*/
+func worker(j int) {
+	time.Sleep(time.Second * (time.Duration(j)))
+}
+
+/*
+*
+示例代码中，使用创建模式创建 goroutine 的spawn函数返回的 channel 的作用发生了变化，从原先的只是用于新 goroutine 发送退出“信号”给创建者，变成了一个双向的数据通道：
+既承载创建者发送给新 goroutine 的“退出信号”，也承载新 goroutine 返回给创建者的“退出状态”。
+*/
+func spawnNotifyWait(f func(int)) chan string {
+	quit := make(chan string)
+	go func() {
+		var job chan int // 模拟job channel
+		for {
+			select {
+			case j := <-job:
+				f(j)
+			case <-quit:
+				quit <- "ok"
+			}
+		}
+	}()
+	return quit
+}
+
+/*
+*通知并等待一个 goroutine 退出
+ */
+func TestNotifyWait() {
+	quit := spawnNotifyWait(worker)
+	println("spawn a worker goroutine")
+
+	time.Sleep(5 * time.Second)
+
+	// 通知新创建的goroutine退出
+	println("notify the worker to exit...")
+	quit <- "exit"
+
+	timer := time.NewTimer(time.Second * 10)
+	defer timer.Stop()
+	select {
+	case status := <-quit:
+		println("worker done:", status)
+	case <-timer.C:
+		println("wait worker exit timeout")
+	}
+}
+func spawnGroupNotifyWait(n int, f func(int)) chan struct{} {
+	quit := make(chan struct{})
+	job := make(chan int)
+	var wg sync.WaitGroup
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done() // 保证wg.Done在goroutine退出前被执行
+			name := fmt.Sprintf("worker-%d:", i)
+			for {
+				j, ok := <-job
+				if !ok {
+					println(name, "done")
+					return
+				}
+				// do the job
+				worker(j)
+			}
+		}(i)
+	}
+
+	go func() {
+		<-quit
+		close(job) // 广播给所有新goroutine
+		wg.Wait()
+		quit <- struct{}{}
+	}()
+
+	return quit
+}
+
+/*
+*
+通知并等待多个 goroutine 退出
+下面是“通知并等待多个 goroutine 退出”的场景。Go 语言的 channel 有一个特性，那就是当使用 close 函数关于 channel 时，所有阻塞到该 channel 上的 goroutine 都会得到“通知”，
+我们就利用这一特性实现满足这一场景的模式
+*/
+func TestNotifyWait1() {
+	quit := spawnGroupNotifyWait(5, worker)
+	println("spawn a group of workers")
+
+	time.Sleep(1 * time.Second)
+	// notify the worker goroutine group to exit
+	println("notify the worker group to exit...")
+	quit <- struct{}{}
+
+	timer := time.NewTimer(time.Second * 3)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		println("wait group workers exit timeout!")
+	case <-quit:
+		println("group workers done")
+	}
+}

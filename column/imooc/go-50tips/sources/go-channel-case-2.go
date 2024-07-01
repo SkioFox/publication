@@ -22,6 +22,10 @@ func spawn(f func()) <-chan signal {
 	return c
 }
 
+/*
+*
+无缓冲 channel 常被用于在两个 goroutine 之间 1 对 1 的传递通知信号
+*/
 func main() {
 	println("start a worker...")
 	c := spawn(worker)

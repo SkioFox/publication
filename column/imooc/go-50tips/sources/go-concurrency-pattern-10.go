@@ -41,6 +41,11 @@ func fakeWeatherServer(name string) *httptest.Server {
 	}))
 }
 
+/*
+*
+超时(timeout)与取消(cancel)模式
+我们经常会使用 Go 编写向服务发起请求并获取应答结果的客户端应用。这里我们就来看一个这样的例子：我们要编写一个从气象数据服务中心获取气象信息的客户端。该客户端每次会并发向从三个气象数据服务中心发起数据查询请求，并以返回最快的那个响应信息作为此次请求的应答返回值。
+*/
 func main() {
 	result, err := first(fakeWeatherServer("open-weather-1"),
 		fakeWeatherServer("open-weather-2"),

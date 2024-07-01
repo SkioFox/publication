@@ -35,6 +35,10 @@ func spawnGroup(f func(i int), num int, groupSignal <-chan signal) <-chan signal
 	return c
 }
 
+/*
+*
+关闭一个无缓冲 channel 会让所有阻塞在该 channel 上的接收操作返回，从而实现一种 1 对 n 的**“广播”**机制。该 1 对 n 的信号通知机制还常用于通知一组 worker goroutine 退出
+*/
 func main() {
 	fmt.Println("start a group of workers...")
 	groupSignal := make(chan signal)

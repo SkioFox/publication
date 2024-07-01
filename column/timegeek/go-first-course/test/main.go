@@ -1,6 +1,6 @@
 package main
 
-import generics_test "github.com/publication/column/timegeek/go-first-course/test/generics-test"
+import goroutine_test "github.com/publication/column/timegeek/go-first-course/test/goroutine-test"
 
 func main() {
 	//fmt.Println("test")
@@ -38,5 +38,11 @@ func main() {
 	//generics_test.TestGenericsConstraint(1, 2)
 	//generics_test.TestGenericsConstraint1()
 	//generics_test.TestCstConstraint()
-	generics_test.TestCstConstraint1()
+	//generics_test.TestCstConstraint1()
+	//goroutine_test.TestGoroutingSingal()
+	//goroutine_test.TestGoroutingSingalWithError()
+	//goroutine_test.TestGoroutingSingalWithSyncWaitGroup()
+	//goroutine_test.TestGoroutineTimeout()
+	//goroutine_test.TestNotifyWait()
+	goroutine_test.TestNotifyWait1()
 }
